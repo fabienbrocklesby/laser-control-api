@@ -1,0 +1,20 @@
+{
+	"name": "laser-control-api",
+	"version": "1.0.0",
+	"main": "index.js",
+	"type": "module",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"dev": "node --watch server.js "
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"description": "",
+	"dependencies": {
+		"@hono/node-server": "^1.13.8",
+		"cors": "^2.8.5",
+		"hono": "^4.7.1",
+		"serialport": "^13.0.0"
+	}
+}
