@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Laser Control</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100">
+  <div class="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
+    <h1 class="text-center text-2xl font-bold mb-6">Laser Control</h1>
+    <div class="mb-4">
+      <label for="speedControl" class="block text-gray-700 font-bold mb-2">
+        Speed: <span id="speedDisplay">20</span>
+      </label>
+      <input id="speedControl" type="range" min="10" max="200" value="20" class="w-full">
+    </div>
+    <div class="grid grid-cols-3 gap-4">
+      <button id="upLeftButton" class="bg-blue-500 hover:bg-blue-600 text-white rounded px-4 py-2">↖</button>
+      <button id="upButton" class="bg-blue-500 hover:bg-blue-600 text-white rounded px-4 py-2">↑</button>
+      <button id="upRightButton" class="bg-blue-500 hover:bg-blue-600 text-white rounded px-4 py-2">↗</button>
+      <button id="leftButton" class="bg-blue-500 hover:bg-blue-600 text-white rounded px-4 py-2">←</button>
+      <div id="center" class="flex items-center justify-center font-mono text-lg">0,0</div>
+      <button id="rightButton" class="bg-blue-500 hover:bg-blue-600 text-white rounded px-4 py-2">→</button>
+      <button id="downLeftButton" class="bg-blue-500 hover:bg-blue-600 text-white rounded px-4 py-2">↙</button>
+      <button id="downButton" class="bg-blue-500 hover:bg-blue-600 text-white rounded px-4 py-2">↓</button>
+      <button id="downRightButton" class="bg-blue-500 hover:bg-blue-600 text-white rounded px-4 py-2">↘</button>
+    </div>
+  </div>
+  <script>
+    let currentX = 0, currentY = 0, lastTimestamp = null, lastSentTime = 0, animationFrameId = null, currentDirection = { dx: 0, dy: 0 };
+    let speed = 20, throttle = 16;
+    const updateDisplay = () => { document.getElementById('center').textContent = `${Math.round(currentX)},${Math.round(currentY)}`; }
+    const moveLaser = async (x, y) => {
+      try {
+        await fetch('http://localhost:3000/move', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ x: Math.round(x), y: Math.round(y) })
+        });
+      } catch (e) { console.error(e); }
+    }
+    const updateMovement = timestamp => {
+      if (!lastTimestamp) { lastTimestamp = timestamp; lastSentTime = timestamp; }
+      const delta = (timestamp - lastTimestamp) / 1000;
+      currentX += currentDirection.dx * speed * delta;
+      currentY += currentDirection.dy * speed * delta;
+      updateDisplay();
+      if (timestamp - lastSentTime >= throttle) { moveLaser(currentX, currentY); lastSentTime = timestamp; }
+      lastTimestamp = timestamp;
+      if (currentDirection.dx || currentDirection.dy) { animationFrameId = requestAnimationFrame(updateMovement); }
+    }
+    const startMoving = direction => { currentDirection = direction; lastTimestamp = null; animationFrameId = requestAnimationFrame(updateMovement); }
+    const stopMoving = () => { currentDirection = { dx: 0, dy: 0 }; if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; } }
+    const addListeners = (id, direction) => {
+      const btn = document.getElementById(id);
+      btn.addEventListener('mousedown', () => startMoving(direction));
+      btn.addEventListener('mouseup', stopMoving);
+      btn.addEventListener('mouseleave', stopMoving);
+      btn.addEventListener('touchstart', e => { e.preventDefault(); startMoving(direction); });
+      btn.addEventListener('touchend', stopMoving);
+    }
+    addListeners('upButton', { dx: 0, dy: 1 });
+    addListeners('downButton', { dx: 0, dy: -1 });
+    addListeners('leftButton', { dx: -1, dy: 0 });
+    addListeners('rightButton', { dx: 1, dy: 0 });
+    addListeners('upLeftButton', { dx: -0.707, dy: 0.707 });
+    addListeners('upRightButton', { dx: 0.707, dy: 0.707 });
+    addListeners('downLeftButton', { dx: -0.707, dy: -0.707 });
+    addListeners('downRightButton', { dx: 0.707, dy: -0.707 });
+    document.getElementById('speedControl').addEventListener('input', e => {
+      speed = parseFloat(e.target.value);
+      document.getElementById('speedDisplay').textContent = speed;
+    });
+  </script>
+</body>
+
+</html>

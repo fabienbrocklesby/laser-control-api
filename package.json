@@ -1,11 +1,12 @@
 {
 	"name": "laser-control-api",
 	"version": "1.0.0",
-	"main": "index.js",
+	"main": "main.js",
 	"type": "module",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
-		"dev": "node --watch server.js "
+		"dev": "node --watch server.js ",
+		"start": "npx electron ."
 	},
 	"keywords": [],
 	"author": "",
@@ -14,6 +15,7 @@
 	"dependencies": {
 		"@hono/node-server": "^1.13.8",
 		"cors": "^2.8.5",
+		"electron": "^34.2.0",
 		"hono": "^4.7.1",
 		"serialport": "^13.0.0"
 	}
