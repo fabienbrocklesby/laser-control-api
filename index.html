@@ -27,6 +27,15 @@
       <button id="downButton" class="bg-blue-500 hover:bg-blue-600 text-white rounded px-4 py-2">↓</button>
       <button id="downRightButton" class="bg-blue-500 hover:bg-blue-600 text-white rounded px-4 py-2">↘</button>
     </div>
+    <div class="mt-6">
+      <label class="block text-gray-700 font-bold mb-2">SVG File Upload</label>
+      <input type="file" id="svgFileInput" accept=".svg" class="mb-4 w-full">
+      <label class="block text-gray-700 font-bold mb-2">Engraving Size (mm)</label>
+      <input type="number" id="engraveSizeInput" placeholder="20" class="mb-4 w-full border rounded px-2 py-1">
+      <button id="printSvgButton" class="bg-green-500 hover:bg-green-600 text-white rounded px-4 py-2 w-full">
+        Print SVG
+      </button>
+    </div>
   </div>
   <script>
     let currentX = 0, currentY = 0, lastTimestamp = null, lastSentTime = 0, animationFrameId = null, currentDirection = { dx: 0, dy: 0 };
@@ -72,6 +81,75 @@
     document.getElementById('speedControl').addEventListener('input', e => {
       speed = parseFloat(e.target.value);
       document.getElementById('speedDisplay').textContent = speed;
+    });
+
+    // SVG Upload, Scale, and Print
+    document.getElementById('printSvgButton').addEventListener('click', () => {
+      const fileInput = document.getElementById('svgFileInput');
+      if (fileInput.files.length === 0) {
+        alert('Please select an SVG file.');
+        return;
+      }
+      const engraveSize = parseFloat(document.getElementById('engraveSizeInput').value);
+      if (isNaN(engraveSize) || engraveSize <= 0) {
+        alert('Please enter a valid engraving size.');
+        return;
+      }
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      reader.onload = async e => {
+        let svgContent = e.target.result;
+        try {
+          // Parse the SVG and adjust its size
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(svgContent, "image/svg+xml");
+          const svgEl = doc.documentElement;
+          // Determine original dimensions
+          let viewBox = svgEl.getAttribute("viewBox");
+          let originalWidth, originalHeight;
+          if (viewBox) {
+            const parts = viewBox.split(/\s+/);
+            originalWidth = parseFloat(parts[2]);
+            originalHeight = parseFloat(parts[3]);
+          } else {
+            originalWidth = parseFloat(svgEl.getAttribute("width"));
+            originalHeight = parseFloat(svgEl.getAttribute("height"));
+          }
+          if (!originalWidth || !originalHeight) {
+            alert('SVG does not have valid dimensions.');
+            return;
+          }
+          // Compute scale factor so that the width equals the desired engraving size.
+          const scale = engraveSize / originalWidth;
+          // Update the viewBox to reflect the new size.
+          svgEl.setAttribute("viewBox", `0 0 ${engraveSize} ${(originalHeight * scale).toFixed(2)}`);
+          // Scale each <path> element's "d" attribute.
+          const paths = svgEl.querySelectorAll("path");
+          paths.forEach(path => {
+            const d = path.getAttribute("d");
+            const scaledD = d.replace(/-?\d*\.?\d+/g, num => {
+              const scaledNum = parseFloat(num) * scale;
+              return scaledNum.toFixed(2);
+            });
+            path.setAttribute("d", scaledD);
+          });
+          // Serialize the modified SVG back to a string.
+          const serializer = new XMLSerializer();
+          const newSvgContent = serializer.serializeToString(svgEl);
+          // Send the scaled SVG to the backend.
+          const response = await fetch('http://localhost:3000/svg', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ svg: newSvgContent })
+          });
+          const result = await response.json();
+          alert(result.message || 'SVG printed successfully.');
+        } catch (err) {
+          console.error(err);
+          alert('Error processing SVG.');
+        }
+      };
+      reader.readAsText(file);
     });
   </script>
 </body>
